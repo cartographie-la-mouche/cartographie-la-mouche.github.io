@@ -349,7 +349,7 @@ function createGlobalProject() {
 			sidePanel.classList.remove('half-page'); // <--- Retour à 35%
 			sidePanel.classList.add('active');render();
 			
-			document.getElementById('panel-title-nav').innerText = "Liste des projets";
+			document.getElementById('panel-title-nav');
             let allP = [];
             data.structures.forEach(s => s.projects.forEach(p => allP.push({...p, sName: s.name, sIdx: data.structures.indexOf(s)})));
             const uniqueNames = [...new Set(allP.map(p => p.name))];
@@ -373,7 +373,7 @@ function createGlobalProject() {
 		sidePanel.classList.remove('half-page'); // <--- Retour à 35%
 		sidePanel.classList.add('active');render();
     
-	document.getElementById('panel-title-nav').innerText = "Liste des partenaires";
+	document.getElementById('panel-title-nav');
             const parentCats = data.categories.filter(c => !c.parent);
             let html = parentCats.map((pCat, pi) => {
                 const directStructs = data.structures.filter(s => s.category === pCat.name);
