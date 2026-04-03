@@ -370,7 +370,7 @@ function renderProjectsList() {
 
         return `
         <div class="list-section" ${extraStyle}>
-            <div class="list-header" onclick="toggleAcc('group-${catLabel.replace(/\s/g, '')}')" style="background: #000; color: #fff;">
+            <div class="list-header" onclick="toggleAcc('group-${catLabel.replace(/\s/g, '')}')" style="background: #000; color: #fff; margin-bottom:5px;">
                 <span>${catLabel.toUpperCase()}</span>
                 <span>▼</span>
             </div>
@@ -410,7 +410,6 @@ function renderPartnersList() {
     let html = parentCats.map((pCat, pi) => {
         const directStructs = data.structures.filter(s => s.category === pCat.name);
         const subCats = data.categories.filter(c => c.parent === pCat.name);
-        
         const extraStyle = (pi === 0) ? 'style="margin-top: 70px;"' : '';
 
         return `<div class="list-section" ${extraStyle}>
@@ -451,7 +450,6 @@ function openPanel(idx) {
     const catObj = data.categories.find(c => c.name === s.category);
     let categoryHTML = catObj ? `<div style="color:${s.color}; font-weight:900; font-size:0.8rem;">${catObj.parent ? catObj.parent.toUpperCase() + ' - ' : ''}${s.category.toUpperCase()}</div>` : "";
 
-    // Marge réduite pour les fiches structures (10px) et padding-right pour la croix
     let html = `<h2 style="margin-top:10px; margin-bottom:5px; padding-right:40px;">${s.name.toUpperCase()}</h2>
                 ${categoryHTML}
                 <p style="margin-top:5px;"><small>${s.address}</small></p>`;
