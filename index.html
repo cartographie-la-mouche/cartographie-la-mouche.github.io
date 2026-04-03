@@ -8,7 +8,6 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 	
     <style>
         :root { --primary-color: #000; --accent-color: #ff0080; }
@@ -186,7 +185,8 @@ input, textarea, select {
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
-    <script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+	<script>
 const map = L.map('map', { zoomControl: false }).setView([45.695, 4.793], 13);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map); 
 
@@ -206,10 +206,7 @@ const map = L.map('map', { zoomControl: false }).setView([45.695, 4.793], 13);
         async function loadDataFromCloud() {
             try {
                 const { data: records, error } = await _supabase
-                    .from('data_storage')
-                    .select('content')
-                    .eq('id', 1)
-                    .single();
+                    ..from('data_storage').select('content').eq('id', 1).single();
 
                 if (records && records.content) {
                     data = records.content;
@@ -237,7 +234,42 @@ const map = L.map('map', { zoomControl: false }).setView([45.695, 4.793], 13);
         }
         loadDataFromCloud();
 		
-        function render() {
+        async function importData(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async function(e) {
+        try {
+            const importedData = JSON.parse(e.target.result);
+            
+            data = importedData;
+            
+            const { error } = await _supabase
+                .from('data_storage')
+                .update({ content: data })
+                .eq('id', 1);
+
+            if (error) {
+                console.error("Détails erreur Supabase:", error);
+                alert("Erreur Cloud : " + error.message);
+            } else {
+                alert("Synchronisé avec le Cloud !");
+                // 3. SEULEMENT ICI on rafraîchit l'affichage
+                render(); 
+            }
+        } catch (err) {
+            alert("Fichier JSON invalide.");
+        }
+    };
+    reader.readAsText(file);
+}
+	   function exportData() {
+            const b = new Blob([JSON.stringify(data)], {type: "application/json"});
+            const a = document.createElement("a"); a.href = URL.createObjectURL(b); a.download="mouche_data.json"; a.click();
+        }
+		
+		function render() {
             markerCluster.clearLayers(); 
             markersMap = {};
             
@@ -747,34 +779,7 @@ function toggleProject(pi, partners, currentIdx) {
         map.fitBounds(new L.featureGroup(allMarkers).getBounds(), {padding: [50, 50]});
 			}
 		}
-       
-	   function exportData() {
-            const b = new Blob([JSON.stringify(data)], {type: "application/json"});
-            const a = document.createElement("a"); a.href = URL.createObjectURL(b); a.download="mouche_data.json"; a.click();
-        }
-       function importData(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = async function(e) {
-        try { 
-			const importedData = JSON.parse(e.target.result); data = importedData; render();
-            const { error } = await _supabase
-                .from('data_storage')
-                .update({ content: data })
-                .eq('id', 1);
-
-            if (error) {
-                alert("Erreur de synchronisation Cloud lors de l'import");
-            } else {
-                alert("Importation réussie et synchronisée avec le Cloud !");
-            }
-        } catch (err) {
-            alert("Erreur lors de la lecture du fichier JSON.");
-        }
-    };
-    reader.readAsText(file);
-}
+      
         function autoExpand(t) { t.style.height = 'inherit'; t.style.height = t.scrollHeight + "px"; }
         function handleShortcuts(e) {
             if (e.ctrlKey && e.key === 'b') { e.preventDefault(); wrapSelection(e.target, '<b>', '</b>'); }
