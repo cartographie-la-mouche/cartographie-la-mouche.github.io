@@ -368,18 +368,43 @@ function renderProjectsList() {
     document.getElementById('panel-body').innerHTML = html;
 }
 
-function renderPartnersList() {
-    const sidePanel = document.getElementById('side-panel');
-    sidePanel.classList.remove('half-page'); // <--- Retour à 35%
-    sidePanel.classList.add('active'); render();
+        function renderProjectsList() {
+            const sidePanel = document.getElementById('side-panel');
+            sidePanel.classList.remove('half-page'); // <--- Retour à 35%
+            sidePanel.classList.add('active'); render();
+            
+            document.getElementById('panel-title-nav').innerText = "";
 
-    document.getElementById('panel-title-nav').innerText = "";
+            let allP = [];
+            data.structures.forEach(s => s.projects.forEach(p => allP.push({...p, sName: s.name, sIdx: data.structures.indexOf(s)})));
+            const uniqueNames = [...new Set(allP.map(p => p.name))];
+            let html = uniqueNames.map((uName, i) => {
+                const variants = allP.filter(p => p.name === uName);
+                return `<div class="list-section">
+                    <div class="list-header" onclick="toggleAcc('lproj-${i}')">
+                        <span>${uName}</span> <span class="year-btn" style="font-size:0.6rem; border:none; background:#000;">${variants[0].year}</span>
+                    </div>
+                    <div class="list-content" id="lproj-${i}">
+                        <p style="font-size:0.75rem; color:#666;">Partagé entre :</p>
+                        ${variants.map(v => `<div class="partner-link" onclick="openPanel(${v.sIdx})">${v.sName}</div>`).join('')}
+                    </div>
+                </div>`;
+            }).join('');
+            document.getElementById('panel-body').innerHTML = html;
+        }
+
+        function renderPartnersList() {
+            const sidePanel = document.getElementById('side-panel');
+            sidePanel.classList.remove('half-page'); // <--- Retour à 35%
+            sidePanel.classList.add('active'); render();
     
-    const parentCats = data.categories.filter(c => !c.parent);
-    let html = parentCats.map((pCat, pi) => {
-        const directStructs = data.structures.filter(s => s.category === pCat.name);
-        const subCats = data.categories.filter(c => c.parent === pCat.name);
-        return `<div class="list-section">
+            document.getElementById('panel-title-nav').innerText = "";
+
+            const parentCats = data.categories.filter(c => !c.parent);
+            let html = parentCats.map((pCat, pi) => {
+                const directStructs = data.structures.filter(s => s.category === pCat.name);
+                const subCats = data.categories.filter(c => c.parent === pCat.name);
+                return `<div class="list-section">
                     <div class="list-header" onclick="toggleAcc('p-group-${pi}')" style="border-left: 5px solid ${pCat.color}">
                         <span style="color:${pCat.color}; font-weight:900;">${pCat.name.toUpperCase()}</span>
                         <span>▼</span>
@@ -398,9 +423,9 @@ function renderPartnersList() {
                         }).join('')}
                     </div>
                 </div>`;
-    }).join('');
-    document.getElementById('panel-body').innerHTML = html;
-}
+            }).join('');
+            document.getElementById('panel-body').innerHTML = html;
+        }
 
 function openPanel(idx) {
     const s = data.structures[idx];
