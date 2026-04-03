@@ -752,12 +752,29 @@ function toggleProject(pi, partners, currentIdx) {
             const b = new Blob([JSON.stringify(data)], {type: "application/json"});
             const a = document.createElement("a"); a.href = URL.createObjectURL(b); a.download="mouche_data.json"; a.click();
         }
-        function importData(e) {
-            const r = new FileReader();
-            r.onload = (ev) => { data = JSON.parse(ev.target.result); save(); location.reload(); };
-            r.readAsText(e.target.files[0]);
-        }
+       function importData(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async function(e) {
+        try { 
+			const importedData = JSON.parse(e.target.result); data = importedData; render();
+            const { error } = await _supabase
+                .from('data_storage')
+                .update({ content: data })
+                .eq('id', 1);
 
+            if (error) {
+                alert("Erreur de synchronisation Cloud lors de l'import");
+            } else {
+                alert("Importation réussie et synchronisée avec le Cloud !");
+            }
+        } catch (err) {
+            alert("Erreur lors de la lecture du fichier JSON.");
+        }
+    };
+    reader.readAsText(file);
+}
         function autoExpand(t) { t.style.height = 'inherit'; t.style.height = t.scrollHeight + "px"; }
         function handleShortcuts(e) {
             if (e.ctrlKey && e.key === 'b') { e.preventDefault(); wrapSelection(e.target, '<b>', '</b>'); }
