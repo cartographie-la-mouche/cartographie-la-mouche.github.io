@@ -626,8 +626,8 @@ function openPanel(idx) {
             
             <div class="project-body" id="body-${pi}" style="display:none; padding-top:15px;">
                 <div style="margin-bottom:10px; font-size:0.8rem;">${partsHtml}</div>
+				<div class="project-description" style="font-size:0.9rem; line-height:1.4;">${p.desc}</div>
                 ${p.img ? `<img src="${p.img}" style="width:100%; border:3px solid #000; margin-bottom:10px;">` : ''}
-                <div class="project-description" style="font-size:0.9rem; line-height:1.4;">${p.desc}</div>
                 ${p.pdf ? `<a href="${p.pdf}" target="_blank" class="url-link" style="display:inline-block; margin-top:10px; color:var(--accent-color); font-weight:900; text-decoration:underline;">${p.word || 'En savoir plus'}</a>` : ''}
             </div>
         </div>`;
