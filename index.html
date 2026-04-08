@@ -584,12 +584,11 @@ async function moveProj(sIdx, pIdx, direction) {
 function openPanel(idx) {
     const s = data.structures[idx];
     if (!s) return;
-	const sidePanel = document.getElementById('side-panel');
+    
+    const sidePanel = document.getElementById('side-panel');
     sidePanel.classList.add('active');
+    
     const catObj = data.categories.find(c => c.name === s.category);
-
-    document.getElementById('side-panel').classList.add('active');
-
     const navTitle = document.getElementById('panel-title-nav');
     if (navTitle) navTitle.innerHTML = "";
 
@@ -598,7 +597,6 @@ function openPanel(idx) {
 
     let categoryHTML = catObj ? `<div style="color:${s.color}; font-weight:900; font-size:0.8rem;">${catObj.parent ? catObj.parent.toUpperCase() + ' - ' : ''}${s.category.toUpperCase()}</div>` : "";
 
-    // Titre descendu (margin-top: 25px)
     let html = `<h2 style="margin-top:25px; margin-bottom:5px;">${s.name.toUpperCase()}</h2>
                 ${categoryHTML}
                 <p style="margin-top:5px;"><small>${s.address}</small></p>`;
@@ -609,79 +607,106 @@ function openPanel(idx) {
             <button onclick="delStruct(${idx})" style="color:red; background:none; border:none; cursor:pointer; font-size:0.7rem; font-weight:900; padding:0;">🗑 SUPPRIMER</button>
         </div>`;
     }
+    
     html += `<hr style="border:1px solid #eee; margin:20px 0;">`;
 
-    const projects = currentYear === "TOUT" ? s.projects : s.projects.filter(p => p.year === currentYear);
+    // --- 1. FILTRAGE GLOBAL ---
+    const filteredProjs = (s.projects || []).filter(p => {
+        if (!p) return false;
+        const yMatch = currentYear === "TOUT" || p.year === currentYear;
+        const tMatch = currentType === "TOUT" || p.type === currentType;
+        return yMatch && tMatch;
+    });
 
-	projects.forEach((p, pi) => {
-    const globalIndex = s.projects.indexOf(p);
-    const partsHtml = p.part ? p.part.split(',').map(n => {
-        const clean = n.trim();
-        const tIdx = data.structures.findIndex(st => st.name.toLowerCase() === clean.toLowerCase());
-        return tIdx !== -1 ? `<span class="partner-link" onclick="openPanel(${tIdx})">${clean}</span>` : `<span>${clean}</span>`;
-    }).join(' ') : "";
+    // --- 2. GROUPEMENT PAR TYPE ---
+    const typesPossibles = ["Action culturelle", "Parcours de spectacle"];
+    
+    typesPossibles.forEach(typeName => {
+        const projsDuType = filteredProjs.filter(p => p.type === typeName);
 
-    html += `<div class="project-item" style="border-bottom: 1px solid #eee; padding: 15px 0;">
-        ${isAdmin ? `
-            <div style="text-align:right; margin-bottom:5px;">
-                <span onclick="moveProj(${idx}, ${globalIndex}, -1)" style="cursor:pointer; margin-right:8px; font-size:0.8rem;">▲</span>
-                <span onclick="moveProj(${idx}, ${globalIndex}, 1)" style="cursor:pointer; margin-right:15px; font-size:0.8rem;">▼</span>
-                
-                <span onclick="editProj(${idx}, ${globalIndex})" style="cursor:pointer; margin-right:10px;">✏️</span> 
-                <span onclick="delProj(${idx}, ${globalIndex})" style="cursor:pointer; color:red">🗑️</span>
-            </div>` : ''}
-        
-        <div class="project-header" onclick="toggleProject(${pi}, '${(p.part || "").replace(/'/g, "\\'")}', ${idx})" style="cursor:pointer; display:flex; justify-content:space-between; align-items:flex-start;">
-            <div>
-                <div style="font-weight:900; font-size:1.1rem; text-transform:uppercase; line-height:1.2;">${p.name}</div>
-                <div style="font-size:0.8rem; margin-top:4px; font-weight:700;">
-                    <span style="color:var(--accent-color);">${p.year}</span> 
-                    <span style="color:#000; margin:0 5px; font-size:1.2rem; vertical-align:middle;">•</span> 
-                    <span style="color:var(--accent-color);">${p.type || ''}</span>
+        if (projsDuType.length > 0) {
+            html += `
+                <div style="background: #000; color: #fff; padding: 5px 10px; margin-top: 20px; font-weight: 900; font-size: 0.8rem; text-transform: uppercase; display: inline-block;">
+                    ${typeName}
                 </div>
+                <div style="border-top: 2px solid #000; margin-bottom: 10px;"></div>
+            `;
+
+            projsDuType.forEach((p) => {
+                const globalIndex = s.projects.indexOf(p);
+                // On crée un ID unique pour éviter les conflits d'ouverture (uniqueId)
+                const uniqueId = typeName.replace(/\s/g, '') + globalIndex;
+
+                const partsHtml = p.part ? p.part.split(',').map(n => {
+                    const clean = n.trim();
+                    const tIdx = data.structures.findIndex(st => st.name.toLowerCase() === clean.toLowerCase());
+                    return tIdx !== -1 ? `<span class="partner-link" onclick="openPanel(${tIdx})">${clean}</span>` : `<span>${clean}</span>`;
+                }).join(' ') : "";
+
+                html += `
+                <div class="project-item" style="border-bottom: 1px solid #eee; padding: 15px 0;">
+                    ${isAdmin ? `
+                        <div style="text-align:right; margin-bottom:5px;">
+                            <span onclick="moveProj(${idx}, ${globalIndex}, -1)" style="cursor:pointer; margin-right:8px;">▲</span>
+                            <span onclick="moveProj(${idx}, ${globalIndex}, 1)" style="cursor:pointer; margin-right:15px;">▼</span>
+                            <span onclick="editProj(${idx}, ${globalIndex})" style="cursor:pointer; margin-right:10px;">✏️</span> 
+                            <span onclick="delProj(${idx}, ${globalIndex})" style="cursor:pointer; color:red">🗑️</span>
+                        </div>` : ''}
+                    
+                    <div class="project-header" onclick="toggleProject('${uniqueId}', '${(p.part || "").replace(/'/g, "\\'")}', ${idx})" style="cursor:pointer; display:flex; justify-content:space-between; align-items:flex-start;">
+                        <div>
+                            <div style="font-weight:900; font-size:1.1rem; text-transform:uppercase; line-height:1.2;">${p.name}</div>
+                            <div style="font-size:0.8rem; margin-top:4px; font-weight:700; color:var(--accent-color);">${p.year}</div>
+                        </div>
+                        <span id="arrow-${uniqueId}" style="font-size:0.8rem; margin-top:5px; color:#000;">▼</span>
+                    </div>
+                    
+                    <div class="project-body" id="body-${uniqueId}" style="display:none; padding-top:15px;">
+                        <div style="margin-bottom:10px; font-size:0.8rem;">${partsHtml}</div>
+                        <div class="project-description" style="font-size:0.9rem; line-height:1.4;">${p.desc}</div>
+                        ${p.img ? `<img src="${p.img}" style="width:100%; border:3px solid #000; margin-top:10px; margin-bottom:10px;">` : ''}
+                        ${p.pdf ? `<a href="${p.pdf}" target="_blank" class="url-link" style="display:inline-block; margin-top:10px; color:var(--accent-color); font-weight:900; text-decoration:underline;">${p.word || 'En savoir plus'}</a>` : ''}
+                    </div>
+                </div>`;
+            });
+        }
+    });
+
+    // --- 3. PROJETS SANS TYPE DÉFINI ---
+    const projsSansType = filteredProjs.filter(p => !typesPossibles.includes(p.type));
+    if (projsSansType.length > 0) {
+        html += `<div style="margin-top:20px; font-style:italic; font-size:0.8rem; color:#666;">Autres projets...</div>`;
+        // (On pourrait boucler ici si besoin de les afficher aussi)
+    }
+
+    // --- 4. FORMULAIRE ADMIN ---
+    if (isAdmin) {
+        html += `<div id="proj-form" style="background:#f9f9f9; padding:15px; border:2px solid #000; margin-top:20px;">
+            <h4 id="proj-form-title" style="margin-top:0;">NOUVEAU PROJET</h4>
+            <input id="py" value="2024-2025" placeholder="Année">
+            <input id="pn" placeholder="Titre du projet">
+            <select id="ptype">
+                <option value="">-- Type de projet --</option>
+                <option value="Action culturelle">Action culturelle</option>
+                <option value="Parcours de spectacle">Parcours de spectacle</option>
+            </select>
+            <input id="pt" placeholder="Partenaires (séparés par virgule)">
+            <textarea id="pd" placeholder="Description détaillée" oninput="autoExpand(this)"></textarea>
+            
+            <div style="margin-bottom:10px;">
+                <label style="font-size:0.7rem; font-weight:bold; display:block;">IMAGE (IMPORT) :</label>
+                <input type="file" id="pimg_file" accept="image/*" style="font-size:0.7rem; width:100%;">
+                <input type="hidden" id="pimg"> 
             </div>
-            <span id="arrow-${pi}" style="font-size:0.8rem; margin-top:5px; color:#000;">▼</span>
-        </div>
-        
-        <div class="project-body" id="body-${pi}" style="display:none; padding-top:15px;">
-            <div style="margin-bottom:10px; font-size:0.8rem;">${partsHtml}</div>
-            <div class="project-description" style="font-size:0.9rem; line-height:1.4;">${p.desc}</div>
-            ${p.img ? `<img src="${p.img}" style="width:100%; border:3px solid #000; margin-top:10px; margin-bottom:10px;">` : ''}
-            ${p.pdf ? `<a href="${p.pdf}" target="_blank" class="url-link" style="display:inline-block; margin-top:10px; color:var(--accent-color); font-weight:900; text-decoration:underline;">${p.word || 'En savoir plus'}</a>` : ''}
-        </div>
-    </div>`;
-});
-
-if (isAdmin) {
-    html += `<div id="proj-form" style="background:#f9f9f9; padding:15px; border:2px solid #000; margin-top:20px;">
-        <h4 id="proj-form-title" style="margin-top:0;">NOUVEAU PROJET</h4>
-        <input id="py" value="2024-2025" placeholder="Année">
-        <input id="pn" placeholder="Titre du projet">
-        <select id="ptype">
-            <option value="">-- Type de projet --</option>
-            <option value="Action culturelle">Action culturelle</option>
-            <option value="Parcours de spectacle">Parcours de spectacle</option>
-        </select>
-        <input id="pt" placeholder="Partenaires (séparés par virgule)">
-        <textarea id="pd" placeholder="Description détaillée" oninput="autoExpand(this)"></textarea>
-        
-        <div style="margin-bottom:10px;">
-            <label style="font-size:0.7rem; font-weight:bold; display:block;">IMAGE (IMPORT) :</label>
-            <input type="file" id="pimg_file" accept="image/*" style="font-size:0.7rem; width:100%;">
-            <input type="hidden" id="pimg"> 
-        </div>
-
-        <input id="pw" placeholder="Texte du bouton (ex: En savoir plus)">
-
-        <div style="margin-bottom:10px;">
-            <label style="font-size:0.7rem; font-weight:bold; display:block;">DOCUMENT PDF (IMPORT) :</label>
-            <input type="file" id="pl_file" accept="application/pdf" style="font-size:0.7rem; width:100%;">
-            <input type="hidden" id="pl"> 
-        </div>
-
-        <button class="btn-full" id="btn-proj-submit" onclick="addProj(${idx})">VALIDER PROJET</button>
-    </div>`;
-}
+            <input id="pw" placeholder="Texte du bouton">
+            <div style="margin-bottom:10px;">
+                <label style="font-size:0.7rem; font-weight:bold; display:block;">DOCUMENT PDF (IMPORT) :</label>
+                <input type="file" id="pl_file" accept="application/pdf" style="font-size:0.7rem; width:100%;">
+                <input type="hidden" id="pl"> 
+            </div>
+            <button class="btn-full" id="btn-proj-submit" onclick="addProj(${idx})">VALIDER PROJET</button>
+        </div>`;
+    }
 
     document.getElementById('panel-body').innerHTML = html;
     if(markersMap[idx]) map.panTo(markersMap[idx].getLatLng());
