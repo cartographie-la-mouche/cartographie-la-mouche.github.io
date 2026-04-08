@@ -291,10 +291,10 @@ function render() {
     markersMap = {};
     
     // --- 1. TIMELINE ---
-    const years = new Set();
-    data.structures.forEach(s => {
-        if (s.projects) s.projects.forEach(p => years.add(p.year));
-    });
+  const years = new Set();
+data.structures.forEach(s => {
+    if (s.projects) {
+        s.projects.forEach(p => { if (!p) return; years.add(p.year); }); }});
     
     const timelineEl = document.getElementById('year-timeline');
     if (timelineEl) {
