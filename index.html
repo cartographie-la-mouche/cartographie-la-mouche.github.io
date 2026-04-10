@@ -881,8 +881,10 @@ async function addProj(idx) {
             img: imageUrl 
         };
 
-        // 2. Enregistrement sur la structure actuelle
-        if(editingProj !== null) { 
+        // Garder trace de l'ancien nom si on modifie (pour retrouver le projet chez les partenaires)
+        let oldName = pn;
+        if(editingProj !== null) {
+            oldName = data.structures[idx].projects[editingProj].name;
             data.structures[idx].projects[editingProj] = pObj; 
             editingProj = null; 
         } else {
@@ -890,63 +892,71 @@ async function addProj(idx) {
             data.structures[idx].projects.push(pObj);
         }
 
-        // --- 3. LOGIQUE DE RÉCIPROCITÉ (Doit être AVANT le save) ---
-      const currentStructName = data.structures[idx].name; 
+        // --- 2. LOGIQUE DE RÉCIPROCITÉ ---
+        const currentStructName = data.structures[idx].name; 
 
-if (pObj.part) {
-    const partners = pObj.part.split(',').map(p => p.trim());
-    
-    partners.forEach(pName => {
-        const sIdx = data.structures.findIndex(s => s.name.toLowerCase() === pName.toLowerCase());
-        
-        if (sIdx !== -1 && sIdx !== idx) {
-            let linkedProj;
-
-            if (pObj.type === "Action culturelle") {
-                // Pour l'action culturelle : on crée un projet "coquille"
-                // On ne garde que l'essentiel, le partenaire remplira le reste
-                linkedProj = {
-                    year: pObj.year,
-                    name: pObj.name,
-                    type: pObj.type,
-                    part: "", // Sera rempli par le partenaire s'il veut citer l'origine
-                    desc: "(Texte à personnaliser pour cette structure)", 
-                    word: "En savoir plus",
-                    pdf: "", 
-                    img: "" 
-                };
-            } else {
-                // Pour le reste (Spectacles) : on synchronise tout comme avant
-                linkedProj = { ...pObj };
-            }
-
-            // Gestion des partenaires pour le projet lié
-            let newParts = partners.filter(name => name.toLowerCase() !== pName.toLowerCase());
-            newParts.push(currentStructName);
-            linkedProj.part = newParts.join(', ');
-
-            if (!data.structures[sIdx].projects) data.structures[sIdx].projects = [];
+        if (pObj.part) {
+            const partners = pObj.part.split(',').map(p => p.trim());
             
-            // On ne l'ajoute que si le projet n'existe pas déjà chez le partenaire
-            const exists = data.structures[sIdx].projects.some(exP => exP.name === linkedProj.name && exP.year === linkedProj.year);
-            if (!exists) {
-                data.structures[sIdx].projects.push(linkedProj);
-            }
-        }
-    });
-}
+            partners.forEach(pName => {
+                const sIdx = data.structures.findIndex(s => s.name.toLowerCase() === pName.toLowerCase());
+                
+                if (sIdx !== -1 && sIdx !== idx) {
+                    if (!data.structures[sIdx].projects) data.structures[sIdx].projects = [];
+                    
+                    // On cherche si le projet existe déjà chez le partenaire (par l'ancien nom ou le nouveau)
+                    const existingIdx = data.structures[sIdx].projects.findIndex(exP => exP.name === oldName || exP.name === pn);
 
-        // 4. Sauvegarde finale et nettoyage
+                    let linkedProj;
+
+                    if (pObj.type === "Action culturelle") {
+                        // Pour l'action culturelle : On fusionne avec l'existant ou on crée une coquille
+                        const existingP = existingIdx !== -1 ? data.structures[sIdx].projects[existingIdx] : {};
+                        
+                        linkedProj = {
+                            year: pObj.year,
+                            name: pObj.name,
+                            type: pObj.type,
+                            part: "", // Sera recalculé plus bas
+                            desc: existingP.desc || "(Texte à personnaliser pour cette structure)", 
+                            word: existingP.word || "En savoir plus",
+                            pdf: existingP.pdf || "", 
+                            img: existingP.img || "" 
+                        };
+                    } else {
+                        // Pour le reste (Spectacles) : On synchronise tout
+                        linkedProj = { ...pObj };
+                    }
+
+                    // Calcul de la liste des partenaires chez le voisin
+                    let newParts = partners.filter(name => name.toLowerCase() !== pName.toLowerCase());
+                    newParts.push(currentStructName);
+                    linkedProj.part = newParts.join(', ');
+
+                    // Mise à jour ou Ajout
+                    if (existingIdx !== -1) {
+                        data.structures[sIdx].projects[existingIdx] = linkedProj;
+                    } else {
+                        data.structures[sIdx].projects.push(linkedProj);
+                    }
+                }
+            });
+        }
+
+        // 3. Sauvegarde finale et nettoyage
         await save(); 
         document.getElementById('pimg_file').value = "";
         document.getElementById('pl_file').value = "";
         
+        // Reset du formulaire
+        document.getElementById('proj-form-title').innerText = "NOUVEAU PROJET";
+        
         openPanel(idx); 
-        alert("Projet enregistré et synchronisé avec les partenaires !");
+        alert("Projet enregistré et synchronisé !");
 
     } catch (error) {
         console.error("Erreur addProj:", error);
-        alert("Erreur lors de l'enregistrement des fichiers.");
+        alert("Erreur lors de l'enregistrement.");
     }
 }
 
