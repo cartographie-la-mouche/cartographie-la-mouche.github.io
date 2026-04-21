@@ -937,41 +937,47 @@ async function addProj(idx) {
         }
 
         // --- RÉCIPROCITÉ ---
-        const currentStructName = data.structures[targetIdx].name; 
-        if (pObj.part) {
-            const partners = pObj.part.split(',').map(p => p.trim());
-            partners.forEach(pName => {
-                const sIdx = data.structures.findIndex(s => s.name.toLowerCase() === pName.toLowerCase());
-                if (sIdx !== -1 && sIdx !== targetIdx) {
-                    if (!data.structures[sIdx].projects) data.structures[sIdx].projects = [];
-                    const existingIdx = data.structures[sIdx].projects.findIndex(exP => exP.name === oldName || exP.name === pn);
-                    
-                    let linkedProj;
-                    if (pObj.type === "Action culturelle") {
-                        const existingP = existingIdx !== -1 ? data.structures[sIdx].projects[existingIdx] : {};
-                        linkedProj = {
-                            year: pObj.year,
-                            name: pObj.name,
-                            type: pObj.type,
-                            part: "", 
-                            desc: existingP.desc || "(Texte à personnaliser pour cette structure)",
-                            img: existingP.img || "", 
-                            pdf: existingP.pdf || "",
-                            word: existingP.word || pObj.word
-                        };
-                    } else {
-                        linkedProj = { ...pObj };
-                    }
+const currentStructName = data.structures[targetIdx].name; 
 
-                    let newParts = partners.filter(name => name.toLowerCase() !== pName.toLowerCase());
-                    newParts.push(currentStructName);
-                    linkedProj.part = newParts.join(', ');
+if (pObj.part) {
+    const partners = pObj.part.split(',').map(p => p.trim());
+    
+    partners.forEach(pName => {
+        const sIdx = data.structures.findIndex(s => s.name.toLowerCase() === pName.toLowerCase());
+        
+        if (sIdx !== -1 && sIdx !== targetIdx) {
+            if (!data.structures[sIdx].projects) data.structures[sIdx].projects = [];
 
-                    if (existingIdx !== -1) data.structures[sIdx].projects[existingIdx] = linkedProj;
-                    else data.structures[sIdx].projects.push(linkedProj);
-                }
-            });
+            const existingIdx = data.structures[sIdx].projects.findIndex(exP => exP && (exP.name === oldName || exP.name === pn));            
+            let linkedProj;
+            if (ptype === "Action culturelle") {
+                const existingP = (existingIdx !== -1) ? data.structures[sIdx].projects[existingIdx] : null;
+
+                linkedProj = {
+                    year: py,
+                    name: pn,
+                    type: ptype,
+                    word: pObj.word,
+                    desc: existingP ? (existingP.desc || "") : "(Texte à personnaliser)",
+                    img: existingP ? (existingP.img || "") : "",
+                    pdf: existingP ? (existingP.pdf || "") : ""
+                };
+            } else {
+                linkedProj = { ...pObj };
+            }
+
+            let otherParts = partners.filter(name => name.toLowerCase() !== pName.toLowerCase());
+            otherParts.push(currentStructName);
+            linkedProj.part = otherParts.join(', ');
+
+            if (existingIdx !== -1) {
+                data.structures[sIdx].projects[existingIdx] = linkedProj;
+            } else {
+                data.structures[sIdx].projects.push(linkedProj);
+            }
         }
+    });
+}
 
         // --- FINALISATION ---
         document.getElementById('proj-form').style.display = 'none';
