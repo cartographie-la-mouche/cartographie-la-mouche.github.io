@@ -30,6 +30,19 @@ input, textarea, select {
     font-size: 1rem;
 }
 
+.spinner {
+    width: 50px;
+    height: 50px;
+    border: 5px solid #f3f3f3;
+    border-top: 5px solid #ff0000; /* Ta couleur rouge */
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
         #side-panel { width: 0; height: 100%; background: #fff; transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); position: relative; border-right: 4px solid #000; z-index: 1005; overflow-y: auto; padding-top: 15px; box-sizing: border-box; }
         #side-panel.active { width: 35%; }
         #side-panel.half-page { width: 50%; }
@@ -81,6 +94,11 @@ input, textarea, select {
 </head>
 <body>
 
+<div id="loader" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; font-family: sans-serif;">
+    <div class="spinner"></div>
+    <p style="margin-top: 15px; color: #333;">Chargement de la carte...</p>
+</div>
+	
     <div id="btn-global-list">
         <button class="tab-btn" onclick="renderPartnersList()">Partenaires</button>
         <button class="tab-btn" onclick="renderProjectsList()">Projets</button>
@@ -199,6 +217,10 @@ const markerCluster = L.markerClusterGroup({ showCoverageOnHover: false, maxClus
 
 // --- CHARGEMENT DES DONNÉES (JSONBin) ---
 async function loadDataFromCloud() {
+    // 1. Afficher le spinner au début
+    const loader = document.getElementById('loader');
+    if (loader) loader.style.display = 'flex';
+
     try {
         const res = await fetch(`${JSONBIN_URL}/latest`, {
             method: 'GET',
@@ -211,11 +233,9 @@ async function loadDataFromCloud() {
 
         const result = await res.json();
         
-        // JSONBin place tes données dans l'objet 'record'
         if (result.record) {
             data = result.record;
             
-            // Nettoyage des projets null (sécurité)
             if (data.structures) {
                 data.structures.forEach(s => {
                     if (s.projects) {
@@ -232,8 +252,10 @@ async function loadDataFromCloud() {
         }
     } catch (e) {
         console.error("Erreur de chargement:", e);
-        // Si ça échoue, on affiche quand même une base vide pour éviter le crash
         if (typeof render === "function") render();
+    } finally {
+        // 2. Masquer le spinner à la fin (quoi qu'il arrive)
+        if (loader) loader.style.display = 'none';
     }
 }
 
@@ -878,19 +900,20 @@ async function addProj(idx) {
     const imgFile = document.getElementById('pimg_file').files[0];
     const pdfFile = document.getElementById('pl_file').files[0];
 
+    // On montre un petit message ou on change le texte du bouton pour faire patienter
+    const btn = document.querySelector('#proj-form button[onclick^="addProj"]');
+    const originalBtnText = btn ? btn.innerText : "";
+    if(btn) btn.innerText = "Chargement des fichiers...";
+
     let imageUrl = document.getElementById('pimg').value;
     let pdfUrl = document.getElementById('pl').value;
 
     try {
-        if (imgFile) {
-            imageUrl = await uploadToCloudinary(imgFile);
-        }
+        // --- ÉTAPE 1 : Upload des fichiers (Indispensable avant de continuer) ---
+        if (imgFile) imageUrl = await uploadToCloudinary(imgFile);
+        if (pdfFile) pdfUrl = await uploadToCloudinary(pdfFile);
 
-        if (pdfFile) {
-            pdfUrl = await uploadToCloudinary(pdfFile);
-        }
-
-        // 1. Création de l'objet projet
+        // --- ÉTAPE 2 : Création de l'objet projet ---
         const pObj = { 
             year: py, 
             name: pn, 
@@ -912,32 +935,20 @@ async function addProj(idx) {
             data.structures[idx].projects.push(pObj);
         }
 
-        // --- 2. LOGIQUE DE RÉCIPROCITÉ (Inchangée, elle fonctionne avec JSONBin) ---
+        // --- ÉTAPE 3 : Logique de réciprocité ---
         const currentStructName = data.structures[idx].name; 
-
         if (pObj.part) {
             const partners = pObj.part.split(',').map(p => p.trim());
-            
             partners.forEach(pName => {
                 const sIdx = data.structures.findIndex(s => s.name.toLowerCase() === pName.toLowerCase());
-                
                 if (sIdx !== -1 && sIdx !== idx) {
                     if (!data.structures[sIdx].projects) data.structures[sIdx].projects = [];
                     const existingIdx = data.structures[sIdx].projects.findIndex(exP => exP.name === oldName || exP.name === pn);
-
+                    
                     let linkedProj;
                     if (pObj.type === "Action culturelle") {
                         const existingP = existingIdx !== -1 ? data.structures[sIdx].projects[existingIdx] : {};
-                        linkedProj = {
-                            year: pObj.year,
-                            name: pObj.name,
-                            type: pObj.type,
-                            part: "", 
-                            desc: existingP.desc || "(Texte à personnaliser pour cette structure)", 
-                            word: existingP.word || "En savoir plus",
-                            pdf: existingP.pdf || "", 
-                            img: existingP.img || "" 
-                        };
+                        linkedProj = { ...pObj, part: "", desc: existingP.desc || "(Texte à personnaliser)" };
                     } else {
                         linkedProj = { ...pObj };
                     }
@@ -946,35 +957,40 @@ async function addProj(idx) {
                     newParts.push(currentStructName);
                     linkedProj.part = newParts.join(', ');
 
-                    if (existingIdx !== -1) {
-                        data.structures[sIdx].projects[existingIdx] = linkedProj;
-                    } else {
-                        data.structures[sIdx].projects.push(linkedProj);
-                    }
+                    if (existingIdx !== -1) data.structures[sIdx].projects[existingIdx] = linkedProj;
+                    else data.structures[sIdx].projects.push(linkedProj);
                 }
             });
         }
 
-        // 3. Sauvegarde finale vers JSONBin
-        await save(); 
-        
-        // Nettoyage des champs file
-        document.getElementById('pimg_file').value = "";
-        document.getElementById('pl_file').value = "";
-        document.getElementById('pimg').value = "";
-        document.getElementById('pl').value = "";
-        
-        document.getElementById('proj-form-title').innerText = "NOUVEAU PROJET";
-        document.getElementById('proj-form').style.display = 'none'; // Ferme le formulaire
-        
+        document.getElementById('proj-form').style.display = 'none';
+        resetProjForm(); // Petite fonction de nettoyage (voir ci-dessous)
         openPanel(idx); 
-        alert("Projet enregistré et synchronisé sur le Cloud !");
+        if(typeof render === "function") render(); 
+		
+        save().then(() => {
+            console.log("Synchronisation Cloud réussie");
+        }).catch(err => {
+            console.error("Erreur de synchro Cloud:", err);
+            alert("Attention : Les données sont affichées mais la sauvegarde Cloud a échoué.");
+        });
 
     } catch (error) {
         console.error("Erreur addProj:", error);
-        alert("Erreur lors de l'enregistrement : " + error.message);
+        alert("Erreur lors de l'envoi : " + error.message);
+    } finally {
+        if(btn) btn.innerText = originalBtnText;
     }
 }
+
+function resetProjForm() {
+    ['pimg_file', 'pl_file', 'pimg', 'pl', 'py', 'pn', 'pt', 'pd', 'pw'].forEach(id => {
+        const el = document.getElementById(id);
+        if(el) el.value = "";
+    });
+    document.getElementById('proj-form-title').innerText = "NOUVEAU PROJET";
+}
+		
 function editProj(sIdx, pIdx) {
     editingProj = pIdx;
     editingStructure = sIdx;
