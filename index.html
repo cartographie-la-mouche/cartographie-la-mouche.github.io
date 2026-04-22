@@ -136,6 +136,8 @@ input, textarea, select {
             <button class="type-btn active" id="type-tout" onclick="setTypeFilter('TOUT')">TOUT</button>
             <button class="type-btn" onclick="setTypeFilter('Action culturelle')">Action culturelle</button>
             <button class="type-btn" onclick="setTypeFilter('Parcours de spectacle')">Spectacle</button>
+			            <button class="type-btn" onclick="setTypeFilter('Cinéma')">Cinéma</button>
+
         </div>
         <div class="timeline-right" id="year-timeline"></div>
     </div>
@@ -470,7 +472,7 @@ function renderProjectsList() {
     });
 
     // 2. Catégories principales
-    const categories = ["Action culturelle", "Parcours de spectacle"];
+    const categories = ["Action culturelle", "Parcours de spectacle", "Cinéma"];
 
     let html = categories.map(catLabel => {
         const projectsInCat = allP.filter(p => p.type === catLabel);
@@ -613,7 +615,7 @@ function openPanel(idx) {
     });
 
     // --- 2. GROUPEMENT PAR TYPE ---
-    const typesPossibles = ["Action culturelle", "Parcours de spectacle"];
+    const typesPossibles = ["Action culturelle", "Parcours de spectacle", "Cinéma"];
     
     typesPossibles.forEach(typeName => {
         const projsDuType = filteredProjs.filter(p => p.type === typeName);
@@ -683,6 +685,7 @@ function openPanel(idx) {
                 <option value="">-- Type de projet --</option>
                 <option value="Action culturelle">Action culturelle</option>
                 <option value="Parcours de spectacle">Parcours de spectacle</option>
+			    <option value="Cinéma">Cinéma</option>
             </select>
             <input id="pt" placeholder="Partenaires (séparés par virgule)">
             <textarea id="pd" placeholder="Description détaillée" oninput="autoExpand(this)"></textarea>
